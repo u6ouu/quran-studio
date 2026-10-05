@@ -1,0 +1,53 @@
+export const exportVideoToWebM = async ({ title, ayah, translation, format }) => {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return { blobUrl: null, message: 'Canvas not supported in this browser.' };
+  }
+
+  const width = format === '9:16' ? 720 : format === '1:1' ? 720 : format === '16:9' ? 1280 : 720;
+  const height = format === '9:16' ? 1280 : format === '1:1' ? 720 : format === '16:9' ? 720 : 900;
+  canvas.width = width;
+  canvas.height = height;
+
+  const gradient = context.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, '#0f172a');
+  gradient.addColorStop(1, '#163d34');
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = 'rgba(255,255,255,0.15)';
+  context.fillRect(35, 35, width - 70, height - 70);
+
+  context.fillStyle = '#f5f1ee';
+  context.font = 'bold 48px serif';
+  context.textAlign = 'center';
+  context.fillText(title || 'Quran Studio', width / 2, 130);
+
+  context.font = '40px serif';
+  context.fillText(ayah || 'Quran data will load from API', width / 2, height / 2);
+
+  context.font = '26px sans-serif';
+  context.fillText(translation || 'Translation will load from API', width / 2, height / 2 + 70);
+
+  const stream = canvas.captureStream(24);
+  const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+  const chunks = [];
+
+  return new Promise((resolve) => {
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        chunks.push(event.data);
+      }
+    };
+
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const blobUrl = URL.createObjectURL(blob);
+      resolve({ blobUrl, message: 'WebM export generated successfully.' });
+    };
+
+    recorder.start();
+    setTimeout(() => recorder.stop(), 1200);
+  });
+};
